@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+FIRST_ARG=$1
+set -a REMOTES
+
+
+getLatestCommit() {
+	git rev-parse HEAD
+}
+
+getCurrentBranch() {
+	git rev-parse --abbrev-ref HEAD
+}
+
+getRemotes() {
+	REMOTES=()
+
+	if [ "$1" != "" ]; then
+	    REMOTES+=($1)
+	else
+	    GIT_REMOTES=$(git remote)
+
+		for remote in $GIT_REMOTES; do
+			REMOTES=("$remote" "${REMOTES[@]}")
+		done
+	fi
+
+}
+
+CHECKED_REMOTES=()
+
+while [[ true ]]; do
+	clear
+	getRemotes $FIRST_ARG
+
+	unset $remote
+	unset $REMOTE
+
+	for REMOTE in "${REMOTES[@]}"; do
+		CURRENT_BRANCH=$(getCurrentBranch)
+	
+		if [[ ! " ${CHECKED_REMOTES[@]} " =~ " ${REMOTE} " ]]; then
+			LATEST_COMMIT=$(git rev-parse $REMOTE/$CURRENT_BRANCH)
+			CHECKED_REMOTES+=("$REMOTE")
+		fi
+
+		if [[ $FIRST_RUN = "true" ]]; then
+			FIRST_RUN="false"
+		fi
+
+		CURRENT_DATE=$(date "+%d.%m.%Y %H:%M:%S")
+		CURRENT_BRANCH=$(getCurrentBranch)
+		CURRENT_COMMIT=$(getLatestCommit)
+
+		printf "[$CURRENT_DATE] [$REMOTE] [$CURRENT_BRANCH] "
+
+		if [[ "$LATEST_COMMIT" != "$CURRENT_COMMIT" ]]; then
+			printf "Updating to commit \"$CURRENT_COMMIT\""
+			git push -q -u $REMOTE $CURRENT_BRANCH > /dev/null
+
+			LATEST_COMMIT=$CURRENT_COMMIT
+		else
+			printf "No new commits to push"
+		fi
+
+		printf "\n"
+
+	done
+	
+	sleep 1 > /dev/null
+done
+
